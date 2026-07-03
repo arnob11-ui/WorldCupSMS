@@ -1,9 +1,27 @@
 import requests
 import time
 from sms import send_sms  # sms.py থেকে ফাংশন কল করা হচ্ছে
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# ⚠️ আপনার আসল API Key-টি এখানে বসান
-FOOTBALLDATA_IO_API_KEY = "fd_f07aea0676b3b130232009780b5326b42e441a2f39fb3804"  
+# ==================== ⚙️ কনফিগারেশন সেকশন ====================
+FOOTBALLDATA_IO_API_KEY = "fd_f07aea0676b3b130232009780b5326b42e441a2f39fb3804"  # ⚠️ আপনার আসল API Key দিন
+PORT = 10000  # রেন্ডার সাধারণত ১০০০০ পোর্ট স্ক্যান করে
+# ============================================================
+
+# 🌐 রেন্ডারকে শান্ত রাখার জন্য ফেক ওয়েব সার্ভার সেটআপ
+class DummyServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"Bot is running 24/7 successfully!")
+
+def run_dummy_server():
+    server = HTTPServer(('0.0.0.0', PORT), DummyServer)
+    print(f"🌐 Dummy Server started on port {PORT} for Render Port Binding.")
+    server.serve_forever()
+
 
 def get_live_matches():
     try:
@@ -16,7 +34,6 @@ def get_live_matches():
         response = requests.get(url, headers=headers, timeout=10)
         
         if response.status_code == 200:
-            # যদি এপিআই রেসপন্স টেক্সট বা স্ট্রিং হয়, তাকে জেসন-এ কনভার্ট করা
             try:
                 raw_matches = response.json()
             except Exception:
@@ -87,4 +104,9 @@ def monitor_matches():
         time.sleep(60)
 
 if __name__ == "__main__":
+    # 🧵 ফেক সার্ভারটিকে আলাদা একটি থ্রেডে ব্যাকগ্রাউন্ডে চালু করা
+    server_thread = threading.Thread(target=run_dummy_server, daemon=True)
+    server_thread.start()
+    
+    # মূল বট মনিটরিং লুপ চালু করা
     monitor_matches()
